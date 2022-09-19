@@ -105,6 +105,8 @@ void chilina(IClients client)
             n = send(sd_friend, &(block.front()), block.size(), 0);
 
             cout << client.s_name << " 📨 " << nickname_friend << endl;
+
+            block.clear();
         }
         else if (action == 'B')
         {
@@ -144,6 +146,34 @@ void chilina(IClients client)
             n = send(client.s_id, &(response_size_str.front()), 3, 0);
             n = send(client.s_id, &(response.front()), response.size(), 0);
             cout << "    🛰 Broadcast close 🛰\n";
+
+            block.clear();
+        }
+        else if (action == 'L')
+        {
+            n = send(client.s_id, "L", 1, 0);
+
+            block = complete_digits(m_clients.size(), 1);
+
+            n = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            for (IClients x : m_clients)
+                block += complete_digits(x.s_name.size(), 1);
+
+            n = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            for (IClients x : m_clients)
+                block += x.s_name;
+
+            n = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            cout << " 📝 Client list printed" << endl;
         }
     }
 
@@ -165,25 +195,7 @@ void list(IClients client)
         {
 
             cout << "Live XD" << endl;
-            block = complete_digits(m_clients.size(), 1);
-
-            N = send(client.s_id, &(block.front()), block.size(), 0);
-
-            block.clear();
-
-            for (IClients x : m_clients)
-                block += complete_digits(x.s_name.size(), 1);
-
-            N = send(client.s_id, &(block.front()), block.size(), 0);
-
-            block.clear();
-
-            for (IClients x : m_clients)
-                block += x.s_name;
-
-            N = send(client.s_id, &(block.front()), block.size(), 0);
-
-            block.clear();
+            
         }
     }
 

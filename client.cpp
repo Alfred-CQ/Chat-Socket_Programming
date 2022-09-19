@@ -27,7 +27,7 @@ map<char, string> actions = {
     {'S', "Server message"},
 };
 
-string global_response;
+string global_response, nickname;
 
 void readMessage(int SocketFD)
 {
@@ -71,6 +71,38 @@ void readMessage(int SocketFD)
 
             cout << "\n\n[ 📬 Message from " << nickname_friend << " ] at " << std::ctime(&time_message) << '\n'
                  << " 💬 " << message << '\n';
+        }
+        else if (option == 'L')
+        {
+            n = recv(SocketFD, bufferRead, 2, 0);
+            bufferRead[n] = '\0';
+
+            int clients_online = atoi(bufferRead), total = 0;
+
+            n = recv(SocketFD, bufferRead, clients_online * 2, 0);
+            bufferRead[n] = '\0';
+
+            vector<int> sizes_clients;
+            sizes_clients.push_back(0);
+            
+            for (int i = 0; i < n - 1; i += 2)
+            {
+                string t(bufferRead, i, 2);
+                total += atoi(&t.front());
+                sizes_clients.push_back(total);
+            }
+
+            n = recv(SocketFD, bufferRead, total, 0);
+            bufferRead[n] = '\0';
+            cout << '\n';
+            for (int i = 1; i <= clients_online; ++i)
+            {
+                string client(bufferRead, sizes_clients[i - 1], sizes_clients[i] - sizes_clients[i - 1]);
+                if ( client == nickname)
+                    cout <<  "  🟢 " << client << endl;
+                else
+                    cout <<  "  👤 " << client << endl;
+            }
         }
     }
     shutdown(SocketFD, SHUT_RDWR);
@@ -117,7 +149,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    string nickname, block, nick_friend, message;
+    string block, nick_friend, message;
 
     thread(readMessage, SocketFD).detach();
 
@@ -212,39 +244,6 @@ int main(int argc, char *argv[])
 
             block.clear();
             message.clear();
-        }
-        else if (option == 'L')
-        {
-
-            char bufferRead[STR_LENGTH];
-
-            int N = recv(SocketFD, bufferRead, 2, 0);
-
-            bufferRead[N] = '\0';
-
-            int tam = atoi(bufferRead);
-
-            N = recv(SocketFD, bufferRead, tam * 2, 0);
-            bufferRead[N] = '\0';
-
-            vector<int> sizes_clients;
-            sizes_clients.push_back(0);
-            int total = 0;
-            for (int i = 0; i < N - 1; i += 2)
-            {
-                string t(bufferRead, i, 2);
-                total += atoi(&t.front());
-                sizes_clients.push_back(total);
-            }
-
-            N = recv(SocketFD, bufferRead, total, 0);
-            bufferRead[N] = '\0';
-
-            for (int i = 1; i <= tam; ++i)
-            {
-                string temp(bufferRead, sizes_clients[i - 1], sizes_clients[i] - sizes_clients[i - 1]);
-                cout << temp << endl;
-            }
         }
         else
         {
