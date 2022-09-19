@@ -151,47 +151,6 @@ void chilina(IClients client)
     close(client.s_id);
 }
 
-void broadcast(IClients client)
-{
-    char bufferRead[STR_LENGTH];
-    int N, M, tam;
-    char b;
-
-    while (b != 'R')
-    {
-        N = recv(client.s_id, &b, 1, 0);
-        cout << "ALIVE" << b << endl;
-        if (b == 'B' | b == 'R')
-        {
-
-            if (b == 'B')
-            {
-            }
-            else
-            {
-
-                strcpy(bufferRead, " Dejo el chat ");
-                strcat(bufferRead, &(client.s_name.front()));
-                N = strlen(bufferRead);
-                for (auto it = m_clients.begin(); it != m_clients.end(); ++it)
-                {
-                    if ((*it).s_id == client.s_id)
-                        cout << "Found" << endl;
-                }
-            }
-            printf("Msg Clients: %s\n", bufferRead);
-            for (IClients i : m_clients)
-            {
-                cout << "Msg to [ " << i.s_name << " ]" << '\n';
-                M = send(i.s_id, bufferRead, N, 0);
-            }
-        }
-    }
-    cout << "Threead dead" << endl;
-    shutdown(client.s_id, SHUT_RDWR);
-    close(client.s_id);
-}
-
 void list(IClients client)
 {
     char bufferRead[STR_LENGTH];
@@ -314,7 +273,6 @@ int main(void)
         }
 
         thread(chilina, client).detach();
-        // thread(broadcast, client).detach();
         //  thread(list, client).detach();
     }
 
