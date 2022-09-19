@@ -45,58 +45,110 @@ vector<IClients> m_clients;
 
 void chilina(IClients client)
 {
-
-    char bufferRead[STR_LENGTH];
-    int N, M, size_friend, size_message;
-
-    int id_friend = -1;
-    char b;
-    /// POLLIN
-
+    int n, m, size_friend_nick, size_message;
+    char action, client_buffer[STR_LENGTH];
+    string block;
+    /// POLL IN
     while (1)
     {
-        N = recv(client.s_id, &b, 1, 0);
+        int sd_friend = -1;
 
-        if (b == 'M')
+        n = recv(client.s_id, &action, 1, 0);
+
+        if (action == 'M')
         {
-            bzero(bufferRead, STR_LENGTH);
+            n = recv(client.s_id, client_buffer, 5, 0);
+            client_buffer[n] = '\0';
 
-            N = recv(client.s_id, bufferRead, 5, 0);
+            string size_friend_nick_str(client_buffer, 0, 2),
+                size_message_str(client_buffer, 2, 3);
 
-            bufferRead[N] = '\0';
+            size_friend_nick = atoi(&size_friend_nick_str.front());
+            size_message = atoi(&size_message_str.front());
 
-            string sz1(bufferRead, 0, 2);
-            string sz2(bufferRead, 2, 3);
+            n = recv(client.s_id, client_buffer, size_friend_nick + size_message, 0);
+            client_buffer[n] = '\0';
 
-            size_friend = atoi(&sz1.front());
-            size_message = atoi(&sz2.front());
+            string nickname_friend(client_buffer, 0, size_friend_nick),
+                message(client_buffer, size_friend_nick, size_message + 1);
 
-            bzero(bufferRead, STR_LENGTH);
-            N = recv(client.s_id, bufferRead, size_friend + size_message, 0);
-            bufferRead[N] = '\0';
-            string nick_friend(bufferRead, 0, size_friend), message(bufferRead, size_friend, size_message + 1);
-
-            for (int i = 0; i < m_clients.size() && id_friend == -1; ++i)
+            int i;
+            for (i = 0; i < m_clients.size() && sd_friend == -1; ++i)
             {
-                if (nick_friend == m_clients[i].s_name)
-                    id_friend = m_clients[i].s_id;
+                if (nickname_friend == m_clients[i].s_name)
+                    sd_friend = m_clients[i].s_id;
             }
 
-            if (id_friend == -1)
+            if (sd_friend == -1)
             {
-                cout << "Client not found" << endl;
+                n = send(client.s_id, "S", 1, 0);
+                string response = "    ❌ friend's nickname not found";
+                string response_size_str = complete_digits(response.size(), 0);
+
+                n = send(client.s_id, &(response_size_str.front()), 3, 0);
+                n = send(client.s_id, &(response.front()), response.size(), 0);
+
+                cout << response << endl;
                 continue;
             }
-            message.insert(0, to_string(client.s_name.size()));
-            message.insert(1, client.s_name);
-            N = send(id_friend, &message.front(), message.size(), 0);
-            if (N <= 0)
-                cout << "ERROR reading registration" << endl;
+
+            n = send(sd_friend, &action, 1, 0);
+
+            block = complete_digits(client.s_name.size(), 1) + complete_digits(message.size(), 0);
+
+            n = send(sd_friend, &(block.front()), 5, 0);
+
+            block.clear();
+
+            block = client.s_name + message;
+
+            n = send(sd_friend, &(block.front()), block.size(), 0);
+
+            cout << client.s_name << " 📨 " << nickname_friend << endl;
+        }
+        else if (action == 'B')
+        {
+            n = recv(client.s_id, client_buffer, 3, 0);
+            client_buffer[n] = '\0';
+
+            size_message = atoi(client_buffer);
+
+            n = recv(client.s_id, client_buffer, size_message, 0);
+            client_buffer[n] = '\0';
+
+            string message_cstr(client_buffer, 0, size_message);
+
+            cout << "    🛰 Broadcast launched 🛰\n";
+            for (IClients i : m_clients)
+            {
+                if (i.s_id != client.s_id)
+                {
+                    n = send(i.s_id, "M", 1, 0);
+
+                    block = complete_digits(client.s_name.size(), 1) + complete_digits(size_message, 0);
+                    n = send(i.s_id, &(block.front()), 5, 0);
+
+                    cout << "     👤 Send to [ " << i.s_name << " ]" << '\n';
+
+                    block.clear();
+
+                    block = client.s_name + message_cstr;
+
+                    n = send(i.s_id, &(block.front()), block.size(), 0);
+                }
+            }
+
+            n = send(client.s_id, "S", 1, 0);
+            string response = "\t🛰  ✅ Broadcast completed";
+            string response_size_str = complete_digits(response.size(), 0);
+            n = send(client.s_id, &(response_size_str.front()), 3, 0);
+            n = send(client.s_id, &(response.front()), response.size(), 0);
+            cout << "    🛰 Broadcast close 🛰\n";
         }
     }
 
-    // shutdown(client.s_id, SHUT_RDWR);
-    // close(client.s_id);
+    shutdown(client.s_id, SHUT_RDWR);
+    close(client.s_id);
 }
 
 void broadcast(IClients client)
@@ -114,13 +166,6 @@ void broadcast(IClients client)
 
             if (b == 'B')
             {
-                bzero(bufferRead, STR_LENGTH);
-                N = recv(client.s_id, bufferRead, 3, 0);
-                bufferRead[N] = '\0';
-                tam = atoi(bufferRead);
-
-                N = recv(client.s_id, bufferRead, tam, 0);
-                bufferRead[N] = '\0';
             }
             else
             {
@@ -243,7 +288,6 @@ int main(void)
 
         type_message = client_buffer[0];
 
-    
         n = recv(clientFD, client_buffer, 2, 0);
         client_buffer[n] = '\0';
         tam = atoi(client_buffer);
@@ -269,9 +313,9 @@ int main(void)
             cout << "    ✅ Response sent\n";
         }
 
-        //thread(chilina, client).detach();
-        //thread(broadcast, client).detach();
-        // thread(list, client).detach();
+        thread(chilina, client).detach();
+        // thread(broadcast, client).detach();
+        //  thread(list, client).detach();
     }
 
     close(SocketFD);

@@ -27,13 +27,11 @@ map<char, string> actions = {
     {'S', "Server message"},
 };
 
-
-
 string global_response;
 
 void readMessage(int SocketFD)
 {
-    int n, size_message;
+    int n, size_friend_nick, size_message;
     char option, bufferRead[STR_LENGTH];
 
     while (1)
@@ -42,7 +40,7 @@ void readMessage(int SocketFD)
         n = recv(SocketFD, &option, 1, 0);
 
         time_t time_message = chrono::system_clock::to_time_t(chrono::system_clock::now());
-       
+
         if (option == 'S')
         {
             n = recv(SocketFD, bufferRead, 3, 0);
@@ -56,20 +54,22 @@ void readMessage(int SocketFD)
         }
         else if (option == 'M')
         {
-            int N, size_friend;
-            bzero(bufferRead, STR_LENGTH);
-            N = recv(SocketFD, bufferRead, STR_LENGTH, 0);
-            size_friend = atoi(&bufferRead[0]);
-            string name_friend(bufferRead, 1, size_friend), message(bufferRead, size_friend + 1, N - size_friend + 1);
+            n = recv(SocketFD, bufferRead, 5, 0);
+            bufferRead[n] = '\0';
 
-            if (N <= 0)
-            {
-                perror("ERROR reading registration");
-                break;
-            }
-            global_response = name_friend;
+            string size_friend_nick_str(bufferRead, 0, 2),
+                size_message_str(bufferRead, 2, 3);
 
-            cout << "\n\n[ ICM Message from " << name_friend << "] at " << std::ctime(&time_message) << '\n'
+            size_friend_nick = atoi(&size_friend_nick_str.front());
+            size_message = atoi(&size_message_str.front());
+
+            n = recv(SocketFD, bufferRead, size_friend_nick + size_message, 0);
+            
+            string nickname_friend(bufferRead, 0, size_friend_nick), message(bufferRead, size_friend_nick, size_message);
+
+            //global_response = name_friend;
+
+            cout << "\n\n[ 📬 Message from " << nickname_friend << " ] at " << std::ctime(&time_message) << '\n'
                  << " 💬 " << message << '\n';
         }
     }
@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
     }
 
     string nickname, block, nick_friend, message;
-    bool chat = 0;
 
     thread(readMessage, SocketFD).detach();
 
@@ -135,7 +134,6 @@ int main(int argc, char *argv[])
     n = send(SocketFD, &(block.front()), block.size(), 0);
     n = send(SocketFD, &(nickname.front()), nickname.size(), 0);
 
-    chat = 1;
     block.clear();
 
     sleep(2);
@@ -143,7 +141,7 @@ int main(int argc, char *argv[])
     cout << "      [M] Send a message - [B] Broadcast\n";
     cout << "      [L] List of users  - [R] Close session\n";
     cout << "      [F] Send a file    - [X] Reply message\n";
-    
+
     while (option != 'R')
     {
         cout << "Your option: ";
@@ -152,22 +150,22 @@ int main(int argc, char *argv[])
 
         n = send(SocketFD, &option, 1, 0);
 
-        if (option == 'M' && chat)
+        if (option == 'M')
         {
             cout << "Enter your friend's nickname: ";
             cin >> nick_friend;
 
-            message = "-1";
-            while (message != "chau")
-            {
-                message.clear();
+            //message = "-1";
+            //while (message != "chau")
+            //{
+              //  message.clear();
 
                 cout << "Type your message: ";
                 cin >> message;
 
                 block = complete_digits(nick_friend.size(), 1) + complete_digits(message.size(), 0);
 
-                n = send(SocketFD, &option, 1, 0);
+                
                 n = send(SocketFD, block.c_str(), 5, 0);
 
                 block.clear();
@@ -177,10 +175,10 @@ int main(int argc, char *argv[])
                 n = send(SocketFD, &(block.front()), block.size(), 0);
 
                 block.clear();
-            }
+            //}
             message.clear();
         }
-        else if (option == 'X' && chat)
+        else if (option == 'X')
         {
             while (message != "chau")
             {
@@ -189,21 +187,21 @@ int main(int argc, char *argv[])
                 cin >> message;
 
                 block = option + complete_digits(global_response.size(), 1) + complete_digits(message.size(), 0);
-                
+
                 n = send(SocketFD, block.c_str(), 6, 0);
                 block.clear();
 
                 block = global_response + message;
-                
+
                 n = send(SocketFD, block.c_str(), global_response.size() + message.size(), 0);
                 block.clear();
             }
         }
-        else if (option == 'C' && chat)
+        else if (option == 'C')
         {
             system("clear");
         }
-        else if (option == 'B' && chat)
+        else if (option == 'B')
         {
             cout << "Write your message: ";
             cin >> message;
@@ -212,13 +210,12 @@ int main(int argc, char *argv[])
             n = send(SocketFD, &(block.front()), block.size(), 0);
             n = send(SocketFD, &(message.front()), message.size(), 0);
 
-            chat = 1;
             block.clear();
             message.clear();
         }
         else if (option == 'L')
         {
-            
+
             char bufferRead[STR_LENGTH];
 
             int N = recv(SocketFD, bufferRead, 2, 0);
@@ -256,7 +253,7 @@ int main(int argc, char *argv[])
         block.clear();
         message.clear();
     }
-   
+
     printf("Closing chat ...\n *** Finished program *** ");
 
     shutdown(SocketFD, SHUT_RDWR);
