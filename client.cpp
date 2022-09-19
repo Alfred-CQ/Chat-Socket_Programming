@@ -34,7 +34,7 @@ void readMessage(int SocketFD)
     int n, size_friend_nick, size_message;
     char option, bufferRead[STR_LENGTH];
 
-    while (1)
+    while (option != 'R')
     {
 
         n = recv(SocketFD, &option, 1, 0);
@@ -245,9 +245,16 @@ int main(int argc, char *argv[])
             block.clear();
             message.clear();
         }
-        else
+        else if (option == 'R')
         {
-            cout << "\n ❌ Please register first\n\n";
+            message = " 🏃 " + nickname + " left the chat";
+            block = complete_digits(message.size(), 0);
+
+            n = send(SocketFD, &(block.front()), block.size(), 0);
+            n = send(SocketFD, &(message.front()), message.size(), 0);
+
+            block.clear();
+            message.clear();
         }
         block.clear();
         message.clear();

@@ -49,7 +49,7 @@ void chilina(IClients client)
     char action, client_buffer[STR_LENGTH];
     string block;
     /// POLL IN
-    while (1)
+    while (action != 'R')
     {
         int sd_friend = -1;
 
@@ -108,7 +108,7 @@ void chilina(IClients client)
 
             block.clear();
         }
-        else if (action == 'B')
+        else if (action == 'B' || action == 'R')
         {
             n = recv(client.s_id, client_buffer, 3, 0);
             client_buffer[n] = '\0';
@@ -120,7 +120,11 @@ void chilina(IClients client)
 
             string message_cstr(client_buffer, 0, size_message);
 
-            cout << "    🛰 Broadcast launched 🛰\n";
+            if (action == 'B')
+                cout << "    🛰 Broadcast launched 🛰\n";
+            else
+                cout << "    🏃 Exit Broadcast launched 🏃\n";
+
             for (IClients i : m_clients)
             {
                 if (i.s_id != client.s_id)
@@ -140,12 +144,25 @@ void chilina(IClients client)
                 }
             }
 
-            n = send(client.s_id, "S", 1, 0);
-            string response = "\t🛰  ✅ Broadcast completed";
-            string response_size_str = complete_digits(response.size(), 0);
-            n = send(client.s_id, &(response_size_str.front()), 3, 0);
-            n = send(client.s_id, &(response.front()), response.size(), 0);
-            cout << "    🛰 Broadcast close 🛰\n";
+            if (action == 'B')
+            {
+                n = send(client.s_id, "S", 1, 0);
+                string response = "\t🛰  ✅ Broadcast completed";
+                string response_size_str = complete_digits(response.size(), 0);
+                n = send(client.s_id, &(response_size_str.front()), 3, 0);
+                n = send(client.s_id, &(response.front()), response.size(), 0);
+                cout << "    🛰 Broadcast close 🛰\n";
+            }
+            else
+            {
+                for (auto it = m_clients.begin(); it != m_clients.end(); ++it)
+                {
+                    if ((*it).s_id == client.s_id)
+                        m_clients.erase(it);
+                }
+
+                cout << "    🏃 Exit Broadcast close 🏃\n";
+            }
 
             block.clear();
         }
@@ -174,28 +191,6 @@ void chilina(IClients client)
             block.clear();
 
             cout << " 📝 Client list printed" << endl;
-        }
-    }
-
-    shutdown(client.s_id, SHUT_RDWR);
-    close(client.s_id);
-}
-
-void list(IClients client)
-{
-    char bufferRead[STR_LENGTH];
-    int N, M, tam;
-    char b;
-
-    while (1)
-    {
-        N = recv(client.s_id, &b, 1, 0);
-        string block;
-        if (b == 'L')
-        {
-
-            cout << "Live XD" << endl;
-            
         }
     }
 
@@ -285,7 +280,6 @@ int main(void)
         }
 
         thread(chilina, client).detach();
-        //  thread(list, client).detach();
     }
 
     close(SocketFD);
