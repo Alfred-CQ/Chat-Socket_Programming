@@ -14,6 +14,7 @@
 #include <vector>
 #include <map>
 #include <thread>
+#include <fstream>
 
 #include "include/utils.h"
 
@@ -30,7 +31,8 @@ map<char, string> actions = {{'N', "Nickname"},
                              {'R', "Close session"},
                              {'F', "Send a file"},
                              {'T', "Temp action"},
-                             {'A', "Actions"}};
+                             {'A', "Actions"},
+                             {'U', "User notification"}};
 
 struct IClients
 {
@@ -191,6 +193,86 @@ void chilina(IClients client)
             block.clear();
 
             cout << " 📝 Client list printed" << endl;
+        }
+        else if (action == 'F')
+        {
+            int size_filename, size_file, bytes_per_packet = 100;
+
+            n = recv(client.s_id, client_buffer, 7, 0);
+            client_buffer[n] = '\0';
+
+            string size_friend_nick_str(client_buffer, 0, 2),
+                size_filename_str(client_buffer, 2, 2),
+                size_file_str(client_buffer, 4, 3);
+
+            size_friend_nick = atoi(&size_friend_nick_str.front());
+            size_filename = atoi(&size_filename_str.front());
+            size_file = atoi(&size_file_str.front());
+
+            n = recv(client.s_id, client_buffer, size_friend_nick + size_filename, 0);
+            client_buffer[n] = '\0';
+
+            string nickname_friend(client_buffer, 0, size_friend_nick),
+                filename(client_buffer, size_friend_nick, size_filename);
+
+            // cout << "NN: " << nickname_friend << " " << filename << endl;
+
+            int i;
+            for (i = 0; i < m_clients.size() && sd_friend == -1; ++i)
+            {
+                if (nickname_friend == m_clients[i].s_name)
+                    sd_friend = m_clients[i].s_id;
+            }
+
+            n = send(sd_friend, &action, 1, 0);
+
+            block = size_filename_str + size_file_str;
+            n = send(sd_friend, &(block.front()), block.size(), 0);
+            n = send(sd_friend, &(filename.front()), filename.size(), 0);
+
+            while (size_file > 0)
+            {
+                n = recv(client.s_id, client_buffer, bytes_per_packet, 0);
+                client_buffer[n] = '\0';
+
+                n = send(sd_friend, client_buffer, bytes_per_packet, 0);
+
+                size_file -= bytes_per_packet;
+
+                if (size_file < bytes_per_packet)
+                    bytes_per_packet = size_file;
+            }
+
+            block.clear();
+
+            n = send(client.s_id, "S", 1, 0);
+            string response = "    ✅ File send successfully";
+            string response_size_str = complete_digits(response.size(), 0);
+
+            n = send(client.s_id, &(response_size_str.front()), 3, 0);
+            n = send(client.s_id, &(response.front()), response.size(), 0);
+
+            cout << response << endl;
+
+            n = send(sd_friend, "S", 1, 0);
+            response = "    📑 You have file " + filename;
+            response_size_str = complete_digits(response.size(), 0);
+
+            n = send(sd_friend, &(response_size_str.front()), 3, 0);
+            n = send(sd_friend, &(response.front()), response.size(), 0);
+
+            cout << "🔔 👤 Notified receiver " << endl;
+        }
+        else if (action == 'U')
+        {
+            n = recv(client.s_id, client_buffer, 3, 0);
+            client_buffer[n] = '\0';
+            size_message = atoi(client_buffer);
+
+            n = recv(client.s_id, client_buffer, size_message, 0);
+            client_buffer[n] = '\0';
+            time_t time_message = chrono::system_clock::to_time_t(chrono::system_clock::now());
+            cout << "\n🔔 Client notification -> " << client_buffer << " at " << std::ctime(&time_message) << '\n';
         }
     }
 

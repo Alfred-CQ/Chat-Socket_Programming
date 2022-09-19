@@ -15,10 +15,13 @@
 #include <chrono>
 #include <vector>
 #include <map>
+#include <fstream>
 
 #include "include/utils.h"
 
 #define STR_LENGTH 256
+
+int bytes_per_packet = 100;
 
 using namespace std;
 
@@ -64,10 +67,10 @@ void readMessage(int SocketFD)
             size_message = atoi(&size_message_str.front());
 
             n = recv(SocketFD, bufferRead, size_friend_nick + size_message, 0);
-            
+
             string nickname_friend(bufferRead, 0, size_friend_nick), message(bufferRead, size_friend_nick, size_message);
 
-            //global_response = name_friend;
+            // global_response = name_friend;
 
             cout << "\n\n[ 📬 Message from " << nickname_friend << " ] at " << std::ctime(&time_message) << '\n'
                  << " 💬 " << message << '\n';
@@ -84,7 +87,7 @@ void readMessage(int SocketFD)
 
             vector<int> sizes_clients;
             sizes_clients.push_back(0);
-            
+
             for (int i = 0; i < n - 1; i += 2)
             {
                 string t(bufferRead, i, 2);
@@ -98,11 +101,56 @@ void readMessage(int SocketFD)
             for (int i = 1; i <= clients_online; ++i)
             {
                 string client(bufferRead, sizes_clients[i - 1], sizes_clients[i] - sizes_clients[i - 1]);
-                if ( client == nickname)
-                    cout <<  "  🟢 " << client << endl;
+                if (client == nickname)
+                    cout << "  🟢 " << client << endl;
                 else
-                    cout <<  "  👤 " << client << endl;
+                    cout << "  👤 " << client << endl;
             }
+        }
+        else if (option == 'F')
+        {
+            bytes_per_packet = 100;
+            int size_file, size_filename;
+
+            n = recv(SocketFD, bufferRead, 5, 0);
+            bufferRead[n] = '\0';
+
+            string size_filename_str(bufferRead, 0, 2),
+                size_file_str(bufferRead, 2, 3);
+
+            size_filename = atoi(&size_filename_str.front());
+            size_file = atoi(&size_file_str.front());
+
+            n = recv(SocketFD, bufferRead, size_filename, 0);
+            bufferRead[n] = '\0';
+
+            string filename(bufferRead, 0, size_filename);
+
+            ofstream outfile;
+            string path = "tempo/" + filename;
+            outfile.open(path, ios::out);
+
+            while (size_file > 0)
+            {
+                n = recv(SocketFD, bufferRead, bytes_per_packet, 0);
+                bufferRead[n] = '\0';
+
+                outfile << bufferRead;
+
+                size_file -= bytes_per_packet;
+
+                if (size_file < bytes_per_packet)
+                    bytes_per_packet = size_file;
+            }
+
+            outfile.close();
+
+            n = send(SocketFD, "U", 1, 0);
+            string response = "  🔑 file downloaded successfully ";
+            string response_size_str = complete_digits(response.size(), 0);
+
+            n = send(SocketFD, &(response_size_str.front()), 3, 0);
+            n = send(SocketFD, &(response.front()), response.size(), 0);
         }
     }
     shutdown(SocketFD, SHUT_RDWR);
@@ -187,26 +235,25 @@ int main(int argc, char *argv[])
             cout << "Enter your friend's nickname: ";
             cin >> nick_friend;
 
-            //message = "-1";
-            //while (message != "chau")
+            // message = "-1";
+            // while (message != "chau")
             //{
-              //  message.clear();
+            //   message.clear();
 
-                cout << "Type your message: ";
-                cin >> message;
+            cout << "Type your message: ";
+            cin >> message;
 
-                block = complete_digits(nick_friend.size(), 1) + complete_digits(message.size(), 0);
+            block = complete_digits(nick_friend.size(), 1) + complete_digits(message.size(), 0);
 
-                
-                n = send(SocketFD, block.c_str(), 5, 0);
+            n = send(SocketFD, block.c_str(), 5, 0);
 
-                block.clear();
+            block.clear();
 
-                block = nick_friend + message;
+            block = nick_friend + message;
 
-                n = send(SocketFD, &(block.front()), block.size(), 0);
+            n = send(SocketFD, &(block.front()), block.size(), 0);
 
-                block.clear();
+            block.clear();
             //}
             message.clear();
         }
@@ -244,6 +291,64 @@ int main(int argc, char *argv[])
 
             block.clear();
             message.clear();
+        }
+        else if (option == 'F')
+        {
+            string file_name;
+            ifstream afile;
+
+            int size_file;
+
+            bytes_per_packet = 100;
+
+            cout << "Enter your friend's nickname: ";
+            cin >> nick_friend;
+            cout << "Type file name: ";
+            cin >> file_name;
+
+            afile.open(file_name, ios::in);
+
+            afile.seekg(0, afile.end);
+            size_file = afile.tellg();
+            afile.seekg(0, afile.beg);
+
+            cout << "SF " << size_file << endl;
+
+            block = complete_digits(nick_friend.size(), 1) +
+                    complete_digits(file_name.size(), 1) +
+                    complete_digits(size_file, 0);
+
+            n = send(SocketFD, block.c_str(), 7, 0);
+
+            block.clear();
+
+            block = nick_friend + file_name;
+
+            n = send(SocketFD, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            char buffer[STR_LENGTH];
+            while (size_file > 0)
+            {
+                afile.read(buffer, bytes_per_packet);
+
+                n = send(SocketFD, buffer, bytes_per_packet, 0);
+
+                size_file -= bytes_per_packet;
+
+                if (size_file < bytes_per_packet)
+                    bytes_per_packet = size_file;
+            }
+
+            afile.close();
+
+            n = send(SocketFD, "U", 1, 0);
+            string response = "  📤 file uploaded ";
+            string response_size_str = complete_digits(response.size(), 0);
+
+            n = send(SocketFD, &(response_size_str.front()), 3, 0);
+            n = send(SocketFD, &(response.front()), response.size(), 0);
         }
         else if (option == 'R')
         {
