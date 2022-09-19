@@ -15,6 +15,8 @@
 #include <map>
 #include <thread>
 
+#include "include/utils.h"
+
 #define STR_LENGTH 256
 
 using namespace std;
@@ -37,20 +39,6 @@ struct IClients
 
     IClients(int id, string name) : s_id(id),
                                     s_name(name) {}
-};
-
-struct Message
-{
-    char s_action;
-    int s_size_destin, s_size_message;
-    string s_message;
-
-    Message(char action, int size_destin, int size_message, string message) : s_action(s_action),
-                                                                              s_size_destin(size_destin),
-                                                                              s_size_message(size_message),
-                                                                              s_message(message)
-    {
-    }
 };
 
 vector<IClients> m_clients;
@@ -117,25 +105,81 @@ void broadcast(IClients client)
     int N, M, tam;
     char b;
 
-    while (1)
+    while (b != 'R')
     {
         N = recv(client.s_id, &b, 1, 0);
-        if (b == 'B')
+        cout << "ALIVE" << b << endl;
+        if (b == 'B' | b == 'R')
         {
 
-            bzero(bufferRead, STR_LENGTH);
-            N = recv(client.s_id, bufferRead, 3, 0);
-            bufferRead[N] = '\0';
-            tam = atoi(bufferRead);
+            if (b == 'B')
+            {
+                bzero(bufferRead, STR_LENGTH);
+                N = recv(client.s_id, bufferRead, 3, 0);
+                bufferRead[N] = '\0';
+                tam = atoi(bufferRead);
 
-            N = recv(client.s_id, bufferRead, tam, 0);
-            bufferRead[N] = '\0';
+                N = recv(client.s_id, bufferRead, tam, 0);
+                bufferRead[N] = '\0';
+            }
+            else
+            {
+
+                strcpy(bufferRead, " Dejo el chat ");
+                strcat(bufferRead, &(client.s_name.front()));
+                N = strlen(bufferRead);
+                for (auto it = m_clients.begin(); it != m_clients.end(); ++it)
+                {
+                    if ((*it).s_id == client.s_id)
+                        cout << "Found" << endl;
+                }
+            }
             printf("Msg Clients: %s\n", bufferRead);
             for (IClients i : m_clients)
             {
                 cout << "Msg to [ " << i.s_name << " ]" << '\n';
                 M = send(i.s_id, bufferRead, N, 0);
             }
+        }
+    }
+    cout << "Threead dead" << endl;
+    shutdown(client.s_id, SHUT_RDWR);
+    close(client.s_id);
+}
+
+void list(IClients client)
+{
+    char bufferRead[STR_LENGTH];
+    int N, M, tam;
+    char b;
+
+    while (1)
+    {
+        N = recv(client.s_id, &b, 1, 0);
+        string block;
+        if (b == 'L')
+        {
+
+            cout << "Live XD" << endl;
+            block = complete_digits(m_clients.size(), 1);
+
+            N = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            for (IClients x : m_clients)
+                block += complete_digits(x.s_name.size(), 1);
+
+            N = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
+
+            for (IClients x : m_clients)
+                block += x.s_name;
+
+            N = send(client.s_id, &(block.front()), block.size(), 0);
+
+            block.clear();
         }
     }
 
@@ -187,6 +231,7 @@ int main(void)
     char bye_message[] = "exit";
     char client_buffer[STR_LENGTH];
     int tam;
+    string block;
 
     for (;;)
     {
@@ -196,43 +241,37 @@ int main(void)
 
         n = recv(clientFD, client_buffer, 1, 0);
 
-        if (n <= 0)
-        {
-            perror("ERROR reading registration");
-            continue;
-        }
-
         type_message = client_buffer[0];
 
-        if (type_message == 'N')
+    
+        n = recv(clientFD, client_buffer, 2, 0);
+        client_buffer[n] = '\0';
+        tam = atoi(client_buffer);
+
+        n = recv(clientFD, client_buffer, tam, 0);
+        client_buffer[n] = '\0';
+
+        IClients client(clientFD, string(client_buffer));
+
+        m_clients.push_back(client);
+
+        cout << "New Client Registered [ " << string(client_buffer) << " ] with ClientFD [ " << clientFD << " ]\n";
+        cout << "    📤 Sending response\n";
+
+        n = send(clientFD, "S", 1, 0);
+        string response = "\t✅ Successful registration";
+        string response_size_str = complete_digits(response.size(), 0);
+        n = send(clientFD, &(response_size_str.front()), 3, 0);
+        n = send(clientFD, &(response.front()), response.size(), 0);
+
+        if (n > 0)
         {
-            n = recv(clientFD, client_buffer, 2, 0);
-            client_buffer[n] = '\0';
-            tam = atoi(client_buffer);
-
-            n = recv(clientFD, client_buffer, tam, 0);
-            client_buffer[n] = '\0';
-
-            IClients client(clientFD, string(client_buffer));
-
-            m_clients.push_back(client);
-
-            cout << "New Client Registered [ " << string(client_buffer) << " ] with ClientFD [ " << clientFD << " ]\n";
-            cout << "    📤 Sending response\n";
-
-            string response = "\t✅ [ Server response ]  Successful registration";
-            n = send(clientFD, &(response.front()), response.size(), 0);
-
-            if (n > 0)
-            {
-                cout << "    ✅ Response sent\n";
-            }
-
-            thread(chilina, client).detach();
-            thread(broadcast, client).detach();
+            cout << "    ✅ Response sent\n";
         }
 
-        //
+        //thread(chilina, client).detach();
+        //thread(broadcast, client).detach();
+        // thread(list, client).detach();
     }
 
     close(SocketFD);
