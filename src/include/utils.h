@@ -23,4 +23,14 @@
             }
         }
 
+        bool error_communication(int number_bytes)
+        {
+            if ( number_bytes <= 0)
+            {
+                std::cout << "[ ERROR ] -> Bytes\n"; 
+                return true;
+            }
+            return false;
+        }
+
 #endif

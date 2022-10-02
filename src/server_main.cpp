@@ -1,21 +1,11 @@
 /* Server code in C */
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-
 #include <iostream>
 #include <vector>
 #include <map>
 #include <thread>
 #include <fstream>
 
+#include "include/server.hpp"
 #include "include/utils.h"
 
 #define STR_LENGTH 256
@@ -50,7 +40,6 @@ void chilina(IClients client)
     int n, m, size_friend_nick, size_message;
     char action, client_buffer[STR_LENGTH];
     string block;
-    /// POLL IN
     while (action != 'R')
     {
         int sd_friend = -1;
@@ -282,41 +271,11 @@ void chilina(IClients client)
 
 int main(void)
 {
-    struct sockaddr_in stSockAddr;
-    int SocketFD, n;
-
+    Server myServer(45000, "127.0.01");  
+    
+    int n;
     struct sockaddr_in cli_addr;
     socklen_t client;
-
-    if ((SocketFD = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        perror("Socket");
-        exit(1);
-    }
-
-    if (setsockopt(SocketFD, SOL_SOCKET, SO_REUSEADDR, "1", sizeof(int)) == -1)
-    {
-        perror("Setsockopt");
-        exit(1);
-    }
-
-    memset(&stSockAddr, 0, sizeof(struct sockaddr_in));
-
-    stSockAddr.sin_family = AF_INET;
-    stSockAddr.sin_port = htons(45000);
-    stSockAddr.sin_addr.s_addr = INADDR_ANY;
-
-    if (bind(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(struct sockaddr)) == -1)
-    {
-        perror("Unable to bind");
-        exit(1);
-    }
-
-    if (listen(SocketFD, 5) == -1)
-    {
-        perror("Listen");
-        exit(1);
-    }
 
     cout << "░█▀▀░█▀▀░█▀▄░█░█░█▀▀░█▀▄░░░█░░░█▀█░█▀▀░█▀▀\n░▀▀█░█▀▀░█▀▄░▀▄▀░█▀▀░█▀▄░░░█░░░█░█░█░█░▀▀█\n░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀░▀░░░▀▀▀░▀▀▀░▀▀▀░▀▀▀\n";
 
@@ -330,7 +289,7 @@ int main(void)
     {
         client = sizeof(struct sockaddr_in);
 
-        int clientFD = accept(SocketFD, (struct sockaddr *)&cli_addr, &client);
+        int clientFD = accept(myServer.server_SocketFD, (struct sockaddr *)&cli_addr, &client);
 
         n = recv(clientFD, client_buffer, 1, 0);
 
@@ -364,6 +323,6 @@ int main(void)
         thread(chilina, client).detach();
     }
 
-    close(SocketFD);
+    close(myServer.server_SocketFD);
     return 0;
 }
