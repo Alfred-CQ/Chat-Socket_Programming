@@ -1,4 +1,12 @@
 #include "include/client.hpp"
+#include "include/tictactoe.hpp"
+#include <string.h>
+
+bool stop_game = false;
+
+Tictactoe* game = nullptr;
+
+char option_send = 'N';
 
 void readMessage(Client* client)
 {
@@ -18,7 +26,8 @@ void readMessage(Client* client)
             client->recv_List();
         else if (option == 'F')
             client->recv_File();
-
+            
+        option = '1';
     }
     
     shutdown(client->cli_socketFD, SHUT_RDWR);
@@ -30,14 +39,14 @@ int main(int argc, char *argv[])
     
     Client myclient(45000, "127.0.0.1");
 
-    char option = 'N';
     string nickname;
 
     std::thread(readMessage, &myclient).detach();
 
+    system("clear");
     cout << "░█░█░█▀▀░█░░░█▀▀░█▀█░█▄█░█▀▀\n░█▄█░█▀▀░█░░░█░░░█░█░█░█░█▀▀\n░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀\n";
 
-    myclient.send_Option(&option);
+    myclient.send_Option(&option_send);
 
     cout << " 👥 Write your nickname to get started: ";
     cin >> nickname;
@@ -45,21 +54,21 @@ int main(int argc, char *argv[])
     myclient.set_nickname(nickname);
     myclient.send_Nickname();
     
-    sleep(2);
+    sleep(1.5);
     cout << "***** " << nickname << " choose one of the following options *****\n";
     cout << "      [M] Send a message - [B] Broadcast\n";
     cout << "      [L] List of users  - [R] Close session\n";
-    cout << "      [F] Send a file    - [X] Reply message\n";
+    cout << "      [F] Send a file    - [G] Accept game\n";
 
-    while (option != 'R')
+    while (option_send != 'R')
     {
         cout << "Your option: ";
 
-        cin >> option;
+        cin >> option_send;
 
-        myclient.send_Option(&option);
+        myclient.send_Option(&option_send);
 
-        if (option == 'M')
+        if (option_send == 'M')
         {
             string nick_friend, message;
 
@@ -71,8 +80,7 @@ int main(int argc, char *argv[])
 
             myclient.send_Message(nick_friend, message);
         }
-        
-        else if (option == 'B')
+        else if (option_send == 'B')
         {
             string message;
 
@@ -81,13 +89,13 @@ int main(int argc, char *argv[])
 
             myclient.send_Broadcast(message);
         }
-        else if (option == 'R')
+        else if (option_send == 'R')
         {
             string message = " 🏃 " + nickname + " left the chat";
 
             myclient.send_Broadcast(message);
         }
-        else if (option == 'F')
+        else if (option_send == 'F')
         {
             string nick_friend, file_name;
 
@@ -98,6 +106,7 @@ int main(int argc, char *argv[])
 
             myclient.send_File(nick_friend, file_name);
         }
+
     }
 
     cout << "Closing chat ...\n *** Finished program *** ";

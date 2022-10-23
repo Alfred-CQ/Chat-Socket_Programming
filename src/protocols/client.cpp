@@ -76,7 +76,6 @@ void Client::set_nickname(std::string nickname)
  * @return A boolean to know if the option has been sent
  * 
 */ 
-
 bool Client::send_Option(char* option)
 {
     int bytes_send{0};
@@ -101,7 +100,6 @@ bool Client::send_Option(char* option)
  * @return A boolean to know if the nickname has been sent
  * 
 */ 
-
 bool Client::send_Nickname()
 {
     int bytes_send{0};
@@ -133,7 +131,6 @@ bool Client::send_Nickname()
  * 
  * @return A boolean to know if the message has been sent
 */ 
-
 bool Client::send_Message(std::string nickname_friend, std::string message)
 {
     int bytes_send{0};
@@ -168,11 +165,10 @@ bool Client::send_Message(std::string nickname_friend, std::string message)
  * @return A boolean to know if the broadcast message has been sent
  * 
 */ 
-
 bool Client::send_Broadcast(std::string message)
 {
     int bytes_send{0};
-    std::string size_message_str = complete_digits(cli_nickname.size(), 0);
+    std::string size_message_str = complete_digits(message.size(), 0);
 
     bytes_send = send(cli_socketFD, &(size_message_str.front()), size_message_str.size(), 0);
 
@@ -203,7 +199,6 @@ bool Client::send_Broadcast(std::string message)
  * @return A boolean to know if the file has been sent
  * 
 */ 
-
 bool Client::send_File(std::string nickname_friend, std::string file_name)
 {
     std::ifstream input_file;
@@ -366,9 +361,9 @@ bool Client::recv_File()
 
     string filename(message_received, 0, size_filename);
 
-    mkdir("temp",0777);
+    mkdir(&(cli_nickname.front()),0777);
 
-    string path = "temp/" + filename;
+    string path = cli_nickname + "/" + filename;
 
     out_file.open(path, std::ios::out);
 
@@ -392,6 +387,8 @@ bool Client::recv_File()
 
     bytes_received = send(cli_socketFD, &(response_size_str.front()), 3, 0);
     bytes_received = send(cli_socketFD, &(response.front()), response.size(), 0);
+
+    return 1;
 }
 
 /**
@@ -446,4 +443,6 @@ bool Client::recv_List()
         else
             cout << "  👤 " << client << '\n';
     }
+
+    return 1;
 }
