@@ -7,6 +7,7 @@
 
     struct SClients
     {
+        int         id;
         int         scli_socketFD;
         string      scli_nickname;
         Tictactoe*  scli_board = nullptr;
@@ -33,11 +34,12 @@
             vector<SClients*>   s_clients;
             vector<Tictactoe*>  s_games;
 
+            Server();
             Server(uint port, std::string ip);
             ~Server();
 
             /* */
-            SClients*   register_client();
+            SClients*   register_client(int client_FD);
             bool        message_clients(SClients* client);
 
             /* Senders */

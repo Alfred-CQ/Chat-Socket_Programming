@@ -46,11 +46,10 @@ int main(int argc, char *argv[])
     system("clear");
     cout << "░█░█░█▀▀░█░░░█▀▀░█▀█░█▄█░█▀▀\n░█▄█░█▀▀░█░░░█░░░█░█░█░█░█▀▀\n░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀\n";
 
-    myclient.send_Option(&option_send);
-
     cout << " 👥 Write your nickname to get started: ";
     cin >> nickname;
 
+    myclient.send_Option(&option_send);
     myclient.set_nickname(nickname);
     myclient.send_Nickname();
     
