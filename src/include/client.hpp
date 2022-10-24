@@ -7,31 +7,35 @@
     {
         public:
             /* Variables */
-            int cli_socketFD;
-            std::string cli_nickname;
+            int                 cli_socketFD;
+            std::string         cli_nickname;
 
-            uint cli_port;
-            std::string cli_ip;
-            struct sockaddr_in cli_stsocketAddr;
+            uint                cli_port;
+            std::string         cli_ip;
+            struct sockaddr_in  cli_stsocketAddr;
 
-            Client(uint port, std::string ip);
-            ~Client();
+            Client              (uint port, std::string ip);
+            ~Client             ();
 
             /* Senders */
-            bool send_Option(char* option);
-            bool send_Nickname();
-            bool send_Message(std::string nickname_friend, std::string message);
-            bool send_Broadcast(std::string message);
-            bool send_File(std::string nickname_friend, std::string file_name);
+
+            bool send_Option                (char* option);
+            bool send_Nickname              ();
+            bool send_Message               (std::string nickname_friend, std::string message);
+            bool send_Broadcast             (std::string message);
+            bool send_File                  (std::string nickname_friend, std::string file_name);
+            bool send_Server_Notification   (std::string message);
+            bool send_Invitation            (std::string nickname_friend, uint size_board);
 
             /* Receivers */
-            bool recv_Server();
-            bool recv_Message();
-            bool recv_List();
-            bool recv_File();
+
+            bool recv_Server    ();
+            bool recv_Message   ();
+            bool recv_List      ();
+            bool recv_File      ();
 
             /* Setters */
-            void set_nickname(std::string nickname);
+            void set_nickname   (std::string nickname);
             
             /* Utils */
             

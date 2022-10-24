@@ -240,14 +240,43 @@ bool Client::send_File(std::string nickname_friend, std::string file_name)
 
     input_file.close();
   
-    bytes_send = send(cli_socketFD, "U", 1, 0);
-    string response = "  📤 file uploaded ";
-    string response_size_str = complete_digits(response.size(), 0);
-
-    bytes_send = send(cli_socketFD, &(response_size_str.front()), 3, 0);
-    bytes_send = send(cli_socketFD, &(response.front()), response.size(), 0);
+    send_Server_Notification("  📤 file uploaded ");
 
     return 1;
+}
+
+/**
+ * 
+ * @brief This function sends a notification to the server
+ * 
+ * @protocol U | size_message | message
+ * 
+ * @param U                     option to enable this protocol      [ char ]          [ 1 ]
+ * @param size_message          size message string size            [ size_t ]        [ 2 ]
+ * @param message               message to server                   [ std::string ]   [ V ]
+ * 
+ * @return A boolean to know if the message has been sent
+ * 
+*/ 
+bool Client::send_Server_Notification(std::string message)
+{
+    int bytes_send = send(cli_socketFD, "U", 1, 0);
+    string response_size_str = complete_digits(message.size(), 0);
+
+    bytes_send = send(cli_socketFD, &(response_size_str.front()), 3, 0);
+    bytes_send = send(cli_socketFD, &(message.front()), message.size(), 0);
+
+    return 1;
+}
+
+bool Client::send_Invitation(std::string nickname_friend, uint size_board)
+{
+    string sizeboard_str = std::to_string(size_board);
+    //int  n = send(cli_socketFD, "G", 1, 0);
+    // SIZE_NICKNAME SIZE_BOARD | NICKNAME FRIEND
+    string block = complete_digits(nickname_friend.size(), 1) + sizeboard_str;
+    int n = send(cli_socketFD, &(block.front()), 3, 0);
+    n = send(cli_socketFD, &(nickname_friend.front()), nickname_friend.size(), 0);
 }
 
 /*
@@ -381,12 +410,7 @@ bool Client::recv_File()
 
     out_file.close();
 
-    bytes_received = send(cli_socketFD, "U", 1, 0);
-    string response = "  🔑 file downloaded successfully ";
-    string response_size_str = complete_digits(response.size(), 0);
-
-    bytes_received = send(cli_socketFD, &(response_size_str.front()), 3, 0);
-    bytes_received = send(cli_socketFD, &(response.front()), response.size(), 0);
+    send_Server_Notification("  🔑 file downloaded successfully ");
 
     return 1;
 }

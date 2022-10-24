@@ -2,8 +2,7 @@
     #define _SERVER_HPP_
 
     #include "config.h"
-
-    #include "tictactoe.hpp"
+    #include "../game/tictactoe.hpp"
 
     struct SClients
     {

@@ -1,6 +1,5 @@
 #include "include/client.hpp"
-#include "include/tictactoe.hpp"
-#include <string.h>
+#include "game/tictactoe.hpp"
 
 bool stop_game = false;
 
@@ -26,6 +25,58 @@ void readMessage(Client* client)
             client->recv_List();
         else if (option == 'F')
             client->recv_File();
+        else if (option == 'G')
+        {
+            char bufferRead[STR_LENGTH];
+            
+            n = recv(client->cli_socketFD, bufferRead, 2, 0);
+            bufferRead[n] = '\0';
+
+            char player = bufferRead[0];
+            
+            int size_board = atoi(&bufferRead[1]);
+            
+            cout << player << "  " << size_board << endl;
+
+            game = new Tictactoe(atoi(&player), size_board);
+        }
+        else if (option == 'O')
+        {
+            game->draw_Board(client->cli_nickname, game->board_owner, true);
+        }
+           else if (option == 'K')
+        {
+            char bufferRead[STR_LENGTH];
+            
+            n = recv(client->cli_socketFD, bufferRead, 3, 0);
+            bufferRead[n] = '\0';
+            string move(bufferRead, 0 ,2);
+
+            game->mark_Board(move, game->current_turn);
+
+            game->current_turn = atoi(&bufferRead[2]);
+
+            game->draw_Board(client->cli_nickname, game->board_owner);
+            cout << game->board_owner << " - " << game->current_turn << std::endl;
+        }else if (option == 'W')
+        {
+             char bufferRead[STR_LENGTH];
+            game->draw_Board(client->cli_nickname, game->board_owner);
+            
+            n = recv(client->cli_socketFD, bufferRead, 3, 0);
+            bufferRead[n] = '\0';
+            int size_message = atoi(bufferRead);
+
+            n = recv(client->cli_socketFD, bufferRead, size_message, 0);
+            bufferRead[n] = '\0';
+            stop_game = true;
+            option_send = '0';
+            
+            cout << "\n\t    _____________________________\n";
+            cout << "\t    |                             |\n";
+            cout << "\t    " << bufferRead << '\n';
+            cout << "\t    |_____________________________|\n";
+        }
             
         option = '1';
     }
@@ -58,15 +109,19 @@ int main(int argc, char *argv[])
     cout << "***** " << nickname << " choose one of the following options *****\n";
     cout << "      [M] Send a message - [B] Broadcast\n";
     cout << "      [L] List of users  - [R] Close session\n";
-    cout << "      [F] Send a file    - [G] Accept game\n";
+    cout << "      [F] Send a file\n";
+    cout << "      [I] Invite game    - [G] Accept game  - [E] Enter game\n";
 
     while (option_send != 'R')
     {
-        cout << "Your option: ";
+        if (option_send != 'E')
+        {
+            cout << "Your option: ";
 
-        cin >> option_send;
+            cin >> option_send;
 
-        myclient.send_Option(&option_send);
+            myclient.send_Option(&option_send);
+        }
 
         if (option_send == 'M')
         {
@@ -105,6 +160,75 @@ int main(int argc, char *argv[])
             cin >> file_name;
 
             myclient.send_File(nick_friend, file_name);
+        }
+        else if (option_send == 'I')
+        {
+            string nick_friend, message;
+
+            cout << "Enter your friend's nickname to invite: ";
+            cin >> nick_friend;
+
+            cout << "Type your invitation message: ";
+            cin >> message;
+
+            myclient.send_Message(nick_friend, message);
+        }
+        else if (option_send == 'G')
+        {
+            string nick_friend, response_invitation;
+            int sizeboard;
+            cout << "Enter your friend's nickname: ";
+            cin >> nick_friend;
+
+            cout << "Type your response (YES/NO): ";
+            cin >> response_invitation;
+
+            myclient.send_Message(nick_friend, response_invitation);
+            
+            if (response_invitation == "YES")
+            {
+                cout << "Size of Board (1-9): "; 
+                cin >> sizeboard;
+
+                if (sizeboard > 9)
+                {
+                    cout << "Invalid Board Size\n";
+                    continue;
+                }
+
+                myclient.send_Invitation(nick_friend, sizeboard);
+
+                option_send = 'E';
+
+            }
+        }
+        else if (option_send == 'E')
+        {
+            int n;
+            string selected_box;
+            string block;
+            
+            sleep(5);
+            cout << "DEPLOY " << game->board_owner << " " <<  game->current_turn << std::endl;
+            game->draw_Board(myclient.cli_nickname, game->board_owner);
+            while (!stop_game)
+            {
+                if (game->board_owner == game->current_turn)
+                {
+                    sleep(1);
+
+                    if (stop_game == true) break;
+
+                    cout << "\n\t       Player [ " << (game->board_owner == 0 ? 1 : 2) << " ] choose a box: ";
+                    cin >> selected_box;
+
+                    n = send(myclient.cli_socketFD, "P", 1, 0);
+                    n = send(myclient.cli_socketFD, &(selected_box.front()), 2, 0);
+                    sleep(1);
+                    selected_box.clear();
+                }  
+            }  
+            option_send = '0';
         }
 
     }

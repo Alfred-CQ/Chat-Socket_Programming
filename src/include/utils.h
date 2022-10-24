@@ -1,8 +1,8 @@
 #ifndef _UTILS_H_
     #define _UTILS_H_
 
+        #include <iostream>
         #include <string>
-
         using std::string;
 
         string complete_digits(int t, bool type)
