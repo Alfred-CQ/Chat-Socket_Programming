@@ -1,11 +1,6 @@
 #include "../include/server.hpp"
 #include "../include/utils.h"
 
-Server::Server()
-{
-    
-}
-
 Server::Server(uint port, std::string ip)
 {
     server_port = port;
@@ -41,12 +36,12 @@ Server::~Server()
 {
 }
 
-SClients *Server::register_client(int client_FD)
+SClients *Server::register_client()
 {
-    int bytes_received{0}; //client_FD = accept(server_SocketFD, (struct sockaddr *)&cli_addr, &client);
+    int bytes_received{0}, client_FD = accept(server_SocketFD, (struct sockaddr *)&cli_addr, &client);
     char client_buffer[STR_LENGTH];
 
-    //bytes_received = recv(client_FD, client_buffer, 1, 0);
+    bytes_received = recv(client_FD, client_buffer, 1, 0);
     bytes_received = recv(client_FD, client_buffer, 2, 0);
     client_buffer[bytes_received] = '\0';
 
