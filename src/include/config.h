@@ -16,6 +16,7 @@
     #include <utility>
 
     typedef unsigned int uint;
+    typedef std::pair<int, int> OWNER_TURN;
 
     #define STR_LENGTH 256
     #define STR_LENGTH_MAX 999

@@ -121,6 +121,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
         {
             if ((*it)->scli_socketFD == client->scli_socketFD)
             {
+                bytes_send = send((*it)->scli_socketFD , "R", 1, 0);
                 s_clients.erase(it);
                 break;
             }

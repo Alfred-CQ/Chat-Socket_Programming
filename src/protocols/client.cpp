@@ -47,9 +47,26 @@ Client::~Client()
 
 }
 
+void Client::get_Game_Owner_CurrTurn(OWNER_TURN data_Game)
+{
+    data_Game.first     = game->board_owner;
+    data_Game.second    = game->current_turn;
+}
+
 void Client::set_nickname(std::string nickname)
 {
     cli_nickname = nickname;
+}
+
+void Client::draw_Board_Game()
+{
+    game->draw_Board(cli_nickname, game->board_owner);
+}
+
+void Client::log_out()
+{
+    shutdown(cli_socketFD, SHUT_RDWR);
+    close(cli_socketFD);
 }
 
 /*
@@ -127,7 +144,7 @@ bool Client::send_Nickname()
  * @param size_nickname_friend  nickname friend string size     [ size_t ]      [ 2 ]
  * @param size_message          message string size             [ size_t ]      [ 3 ]
  * @param nickname_friend       friend nickname                 [ std::string ] [ V ]
- * @param messsage              message to another client       [ std::string ] [ V ]
+ * @param message              message to another client       [ std::string ] [ V ]
  * 
  * @return A boolean to know if the message has been sent
 */ 
@@ -247,36 +264,74 @@ bool Client::send_File(std::string nickname_friend, std::string file_name)
 
 /**
  * 
+ * @brief This function sends the game settings in an invitation 
+ * 
+ * @protocol G | size_nickname_friend | size_board | nickname_friend
+ * 
+ * @param G                     option to enable this protocol  [ char ]        [ 1 ]
+ * @param size_nickname_friend  nickname friend string size     [ size_t ]      [ 2 ]
+ * @param size_board            dimensions of the game board    [ size_t ]      [ 1 ]
+ * @param nickname_friend       friend nickname                 [ std::string ] [ V ]
+ * 
+ * @return A boolean to know if the inivitation has been sent
+*/ 
+bool Client::send_Invitation(std::string nickname_friend, uint size_board)
+{
+    int bytes_send{0};
+
+    string sizeboard_str = std::to_string(size_board),
+           block = complete_digits(nickname_friend.size(), 1) + sizeboard_str;
+
+    bytes_send = send(cli_socketFD, &(block.front()), 3, 0);
+    bytes_send = send(cli_socketFD, &(nickname_friend.front()), nickname_friend.size(), 0);
+
+    return 1;
+}
+
+/**
+ * 
  * @brief This function sends a notification to the server
  * 
  * @protocol U | size_message | message
  * 
- * @param U                     option to enable this protocol      [ char ]          [ 1 ]
- * @param size_message          size message string size            [ size_t ]        [ 2 ]
- * @param message               message to server                   [ std::string ]   [ V ]
+ * @param U                     option to enable this protocol      [ char ]        [ 1 ]
+ * @param size_message          size message string size            [ size_t ]      [ 2 ]
+ * @param message               message to server                   [ std::string ] [ V ]
  * 
  * @return A boolean to know if the message has been sent
  * 
 */ 
 bool Client::send_Server_Notification(std::string message)
 {
-    int bytes_send = send(cli_socketFD, "U", 1, 0);
+    int bytes_send{0};
     string response_size_str = complete_digits(message.size(), 0);
-
+    
+    bytes_send = send(cli_socketFD, "U", 1, 0);
     bytes_send = send(cli_socketFD, &(response_size_str.front()), 3, 0);
     bytes_send = send(cli_socketFD, &(message.front()), message.size(), 0);
 
     return 1;
 }
 
-bool Client::send_Invitation(std::string nickname_friend, uint size_board)
+/**
+ * 
+ * @brief This function sends the box that the player has selected
+ * 
+ * @protocol T | selected_box
+ * 
+ * @param T                     option to enable this protocol  [ char ]        [ 1 ]
+ * @param selected_box          nickname friend string size     [ std::string ] [ 2 ]
+ * 
+ * @return A boolean to know if the selected box has been sent
+*/ 
+bool Client::send_Server_Game_Tick(std::string selected_box)
 {
-    string sizeboard_str = std::to_string(size_board);
-    //int  n = send(cli_socketFD, "G", 1, 0);
-    // SIZE_NICKNAME SIZE_BOARD | NICKNAME FRIEND
-    string block = complete_digits(nickname_friend.size(), 1) + sizeboard_str;
-    int n = send(cli_socketFD, &(block.front()), 3, 0);
-    n = send(cli_socketFD, &(nickname_friend.front()), nickname_friend.size(), 0);
+    int bytes_send{0};
+    
+    bytes_send = send(cli_socketFD, "T", 1, 0);
+    bytes_send = send(cli_socketFD, &(selected_box.front()), 2, 0);
+
+    return 1;
 }
 
 /*
@@ -301,10 +356,10 @@ bool Client::send_Invitation(std::string nickname_friend, uint size_board)
  * 
  * @see    Client::send_Nickname
  * 
- * @return boolean if the message was received successfully
+ * @return boolean if the notification was received successfully
  * 
 */ 
-bool Client::recv_Server()
+bool Client::recv_Server_Notification()
 {
     char message_received[STR_LENGTH_MAX];
     int bytes_received{0}, size_message;
@@ -421,12 +476,12 @@ bool Client::recv_File()
  * 
  * @protocol L | connected_clients | size_nickname_client_1 | ... | size_nickname_client_n | nickname_client_1 | ... | nickname_client_n
  * 
- * @param L                         option to enable this protocol          [ char ]    [ 1 ]
- * @param connected_clients         number of connected clients             [ size_t ]  [ 2 ]
- * @param size_nickname_client_1    the first client nickname string size   [ size_t ]  [ 2 ]
- * @param size_nickname_client_n    the n client nickname string size       [ size_t ]  [ 2 ]
- * @param nickname_client_1         first client nickname                   [ std::string ]   [ V ]
- * @param nickname_client_n         n client nickname                       [ std::string ]   [ V ]
+ * @param L                         option to enable this protocol          [ char ]        [ 1 ]
+ * @param connected_clients         number of connected clients             [ size_t ]      [ 2 ]
+ * @param size_nickname_client_1    the first client nickname string size   [ size_t ]      [ 2 ]
+ * @param size_nickname_client_n    the n client nickname string size       [ size_t ]      [ 2 ]
+ * @param nickname_client_1         first client nickname                   [ std::string ] [ V ]
+ * @param nickname_client_n         n client nickname                       [ std::string ] [ V ]
  * 
  * @return boolean if the list of clients was received successfully
  * 
@@ -469,4 +524,121 @@ bool Client::recv_List()
     }
 
     return 1;
+}
+
+/**
+ * 
+ * @brief  This function receives the arguments of the game 
+ *         from the server, to configure a local version
+ * 
+ * @see    Client::send_Invitation
+ * 
+ * @param G                     option to enable this protocol  [ char ]   [ 1 ]
+ * @param player_turn           player's turn randomly          [ size_t ] [ 1 ]
+ * @param size_board            dimensions of the game board    [ size_t ] [ 1 ]
+ * 
+ * @return boolean if the game settings was received successfully
+ * 
+*/ 
+bool Client::recv_Server_Game_Settings()
+{
+    char bufferRead[STR_LENGTH];
+    int bytes_received{0}, size_board;
+
+    bytes_received = recv(cli_socketFD, bufferRead, 2, 0);
+    bufferRead[bytes_received] = '\0';
+
+    char player = bufferRead[0];
+            
+    size_board = atoi(&bufferRead[1]);
+
+    game = new Tictactoe(atoi(&player), size_board);
+
+    cout << "\n Successfully created game ⚔️, type [E] to enter game \n";
+
+    return 1;
+}
+
+/**
+ * 
+ * @brief  This function receives the move validated by the server 
+ *         and updates the local board values
+ * 
+ * @see    Client::send_Server_Game_Tick
+ * 
+ * @protocol T | movement_on_board | current_turn
+ * 
+ * @param T                     option to enable this protocol  [ char ]        [ 1 ]
+ * @param movement_on_board     box marked on the board         [ std::string ] [ 2 ]
+ * @param current_turn          board turn to update            [ size_t ]      [ 1 ]
+ * 
+ * @return boolean if the game tick settings was received successfully
+ * 
+*/ 
+bool Client::recv_Server_Game_Tick()
+{
+    int bytes_received{0};
+    char bufferRead[STR_LENGTH];
+            
+    bytes_received = recv(cli_socketFD, bufferRead, 3, 0);
+    bufferRead[bytes_received] = '\0';
+    
+    string movement_on_board(bufferRead, 0 ,2);
+
+    game->mark_Board(movement_on_board, game->current_turn);
+    game->current_turn = atoi(&bufferRead[2]);
+    game->draw_Board(cli_nickname, game->board_owner);
+
+    return 1;
+}
+
+/**
+ * 
+ * @brief  This function receives if there was a winner 
+ *         of the game or a tie
+ * 
+ * @protocol W | size_message | message
+ * 
+ * @param W                     option to enable this protocol  [ char ]        [ 1 ]
+ * @param size_message          message string size             [ size_t ]      [ 3 ]
+ * @param message               winner or tie message           [ std::string ] [ V ]
+ * 
+ * @return boolean if the message was received successfully
+ * 
+*/ 
+bool Client::recv_Server_Game_Winner()
+{
+    char bufferRead[STR_LENGTH];
+    int bytes_received{0}, size_message;
+    
+    game->draw_Board(cli_nickname, game->board_owner);
+    
+    bytes_received = recv(cli_socketFD, bufferRead, 3, 0);
+    bufferRead[bytes_received] = '\0';
+    
+    size_message = atoi(bufferRead);
+    
+    bytes_received = recv(cli_socketFD, bufferRead, size_message, 0);
+    bufferRead[bytes_received] = '\0';
+    
+    
+    cout << "\n\t    _____________________________\n";
+    cout << "\t    |                             |\n";
+    cout << "\t    " << bufferRead << '\n';
+    cout << "\t    |_____________________________|\n";
+
+    return 1;
+}
+
+/**
+ * 
+ * @brief  This function receives an indication from the server
+ *         that the selected box has been selected.
+ * 
+ * @param H                     option to enable this protocol  [ char ]        [ 1 ]
+ * 
+*/ 
+void Client::recv_Server_Game_Inv_Tick()
+{
+    game->draw_Board(cli_nickname, game->board_owner, true);
 }

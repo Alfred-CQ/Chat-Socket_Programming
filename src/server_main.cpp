@@ -84,7 +84,7 @@ void manager(SClients* client)
             n = send(sd_friend, "G", 1, 0);
             n = send(sd_friend, &(block_config.front()), 2, 0);
         }
-        else if (action == 'P')
+        else if (action == 'T')
         {
             bool notification;
             int temp = client->scli_board->current_turn;
@@ -97,7 +97,7 @@ void manager(SClients* client)
             if (!client->scli_board->mark_Board(move, client->scli_board->current_turn))
             {
                 notification = true;
-                n = send(client->scli_socketFD, "O", 1, 0);
+                n = send(client->scli_socketFD, "H", 1, 0);
                 continue;
             }
             client_buffer[n + 1] = '\0';
@@ -106,13 +106,13 @@ void manager(SClients* client)
 
             cout << "    🛰 Broadcast launched 🛰\n";
 
-            n = send(client->scli_board->players_sd.first, "K", 1, 0);
+            n = send(client->scli_board->players_sd.first, "T", 1, 0);
             n = send(client->scli_board->players_sd.first, client_buffer, 3, 0);
 
 
             cout << "     👤 Send to [ " << client->scli_board->players_sd.first << " ]" << " Movement: " << client_buffer << '\n';
 
-            n = send(client->scli_board->players_sd.second, "K", 1, 0);
+            n = send(client->scli_board->players_sd.second, "T", 1, 0);
             n = send(client->scli_board->players_sd.second, client_buffer, 3, 0);
 
             cout << "     👤 Send to [ " << client->scli_board->players_sd.second << " ]" << " Movement: " << client_buffer << '\n';
