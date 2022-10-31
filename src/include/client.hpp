@@ -25,7 +25,7 @@
             bool send_Message               (std::string nickname_friend, std::string message);
             bool send_Broadcast             (std::string message);
             bool send_File                  (std::string nickname_friend, std::string file_name);
-            bool send_Invitation            (std::string nickname_friend, uint size_board);
+            bool send_Invitation            (uint size_board);
 
             bool send_Server_Notification   (std::string message);
             bool send_Server_Game_Tick      (std::string selected_box);
@@ -42,7 +42,7 @@
             void recv_Server_Game_Inv_Tick  ();
 
             /* Getters */
-            void get_Game_Owner_CurrTurn    (OWNER_TURN data_Game);
+            void get_Game_Owner_CurrTurn    (OWNER_TURN& data_Game);
 
             /* Setters */
             void set_nickname               (std::string nickname);
@@ -57,5 +57,4 @@
             Tictactoe* game =               nullptr;
     };
 
-    
 #endif

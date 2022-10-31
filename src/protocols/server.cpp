@@ -1,5 +1,5 @@
 #include "../include/server.hpp"
-#include "../include/utils.h" 
+#include "../include/utils.h"
 
 Server::Server(uint port, std::string ip)
 {
@@ -50,20 +50,22 @@ SClients *Server::register_client()
     bytes_received = recv(client_FD, client_buffer, size_nickaname, 0);
     client_buffer[bytes_received] = '\0';
 
-    SClients *client = new SClients(client_FD, string(client_buffer));
+    SClients *client = new SClients(server_clients, client_FD, string(client_buffer));
 
     s_clients.push_back(client);
 
     cout << "New Client Registered [ " << string(client_buffer) << " ] with ClientFD [ " << client_FD << " ]\n";
     cout << "    📤 Sending response\n";
 
-    if (send_notification("\t✅ Successful registration", client_FD))
+    if (send_Notification("\t✅ Successful registration", client_FD))
         cout << "    ✅ Response sent\n";
+
+    server_clients++;
 
     return client;
 }
 
-bool Server::send_notification(string message, int clientFD)
+bool Server::send_Notification(string message, int clientFD)
 {
     int bytes_send{0};
     bytes_send = send(clientFD, "S", 1, 0);
@@ -121,7 +123,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
         {
             if ((*it)->scli_socketFD == client->scli_socketFD)
             {
-                bytes_send = send((*it)->scli_socketFD , "R", 1, 0);
+                bytes_send = send((*it)->scli_socketFD, "R", 1, 0);
                 s_clients.erase(it);
                 break;
             }
@@ -131,7 +133,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
     }
     else
     {
-        send_notification("\t🛰  ✅ Broadcast completed", client->scli_socketFD);
+        send_Notification("\t🛰  ✅ Broadcast completed", client->scli_socketFD);
         cout << "    🛰 Broadcast close 🛰\n";
     }
 
@@ -219,22 +221,89 @@ bool Server::send_file(SClients *client)
     }
 
     string response = "    ✅ File send successfully";
-    send_notification(response, client->scli_socketFD);
+    send_Notification(response, client->scli_socketFD);
     cout << response << endl;
 
     response.clear();
 
     response = "    📑 You have file " + filename;
-    send_notification(response, sd_friend);
+    send_Notification(response, sd_friend);
 
     cout << "🔔 👤 Notified receiver " << endl;
 
     return 1;
 }
 
-bool Server::message_clients(SClients *client)
+bool Server::send_Game_Settings(string settings, SClients *client)
 {
-    int bytes_received{0}, bytes_send{0}, size_friend_nick, size_message, index_sd_friend{0}, sd_friend{-1};
+    int bytes_send{0};
+
+    bytes_send = send(client->scli_socketFD, "G", 1, 0);
+    bytes_send = send(client->scli_socketFD, &(settings.front()), 2, 0);
+
+    return 1;
+}
+
+bool Server::send_Game_Tick(Tictactoe *game, string move)
+{
+    int bytes_send{0};
+
+    game->current_turn = (game->current_turn + 1) % 2;
+
+    string tick = move + std::to_string(game->current_turn);
+
+    cout << "    🛰 Update Game 🛰\n";
+
+    for (SClients *player : game->players)
+    {
+        bytes_send = send(player->scli_socketFD, "T", 1, 0);
+        bytes_send = send(player->scli_socketFD, &(tick.front()), 3, 0);
+
+        cout << "     👤 Send to [ " << player->scli_socketFD << " ]"
+             << " Movement: " << tick << '\n';
+    }
+
+    cout << "    🛰 Update close 🛰\n";
+
+    game->free_boxes++;
+
+    return 1;
+}
+
+bool Server::send_Game_Winner(Tictactoe *game, int last_turn)
+{
+    string end_game_message, end_game_size_str;
+    int bytes_send{0}, total_boxes = game->get_Size_Board() * game->get_Size_Board();
+
+    if (game->free_boxes == total_boxes)
+        end_game_message = "|  Draw game 🇽 🤝 ⭕    |";
+    else
+        end_game_message = "| Winner player  " + std::to_string((last_turn == 0 ? 1 : 2)) + " " + game->players[last_turn]->scli_nickname + " " + game->player_avatars[last_turn] + "🏅|";
+
+    end_game_size_str = "0" + std::to_string(end_game_message.size());
+
+    cout << "    🛰 Sending Winner Game 🛰\n";
+
+    for (SClients *player : game->players)
+    {
+        bytes_send = send(player->scli_socketFD, "W", 1, 0);
+        bytes_send = send(player->scli_socketFD, &(end_game_size_str.front()), 3, 0);
+        bytes_send = send(player->scli_socketFD, &(end_game_message.front()), end_game_message.size(), 0);
+        cout << "     👤 Send to [ " << player->scli_socketFD << " ]" << '\n';
+        cout << "Message: " << end_game_message << endl;
+        player->scli_available = true;
+    }
+
+    cout << "    🛰 Sending close 🛰\n";
+
+    return 1;
+}
+
+SClients *Server::message_clients(SClients *client)
+{
+    SClients *scli_friend = nullptr;
+
+    int bytes_received{0}, bytes_send{0}, size_friend_nick, size_message;
     char client_buffer[STR_LENGTH];
 
     bytes_received = recv(client->scli_socketFD, client_buffer, 5, 0);
@@ -248,48 +317,121 @@ bool Server::message_clients(SClients *client)
 
     bytes_received = recv(client->scli_socketFD, client_buffer, size_friend_nick + size_message, 0);
     client_buffer[bytes_received] = '\0';
-    cout << " [ SERVER ] " << size_friend_nick << " - " << size_message << "\n";
 
     string nickname_friend(client_buffer, 0, size_friend_nick),
         message(client_buffer, size_friend_nick, size_message);
 
-    for (index_sd_friend = 0; index_sd_friend < s_clients.size(); ++index_sd_friend)
+    for (int index_clients = 0; index_clients < s_clients.size(); ++index_clients)
     {
-        if (nickname_friend == s_clients[index_sd_friend]->scli_nickname)
+        if (nickname_friend == s_clients[index_clients]->scli_nickname)
         {
-            sd_friend = s_clients[index_sd_friend]->scli_socketFD;
+            scli_friend = s_clients[index_clients];
             break;
         }
     }
 
-    if (sd_friend == -1)
+    if (!scli_friend)
     {
-        send_notification("    ❌ friend's nickname not found", client->scli_socketFD);
+        send_Notification("    ❌ friend's nickname not found", client->scli_socketFD);
         cout << "    ❌ friend's nickname not found" << endl;
         return 0;
     }
-    else if (!s_clients[index_sd_friend]->scli_available)
+    else if (!scli_friend->scli_available)
     {
-        cout << "{ sd_friend } " << sd_friend << endl;
-        send_notification("    🎮 friend's in game ", client->scli_socketFD);
+        send_Notification("    🎮 friend's in game ", client->scli_socketFD);
         cout << "     🎮 friend's in game " << endl;
         return 0;
     }
 
-    bytes_send = send(sd_friend, "M", 1, 0);
+    bytes_send = send(scli_friend->scli_socketFD, "M", 1, 0);
 
     string block = complete_digits(client->scli_nickname.size(), 1) + complete_digits(message.size(), 0);
 
-    bytes_send = send(sd_friend, &(block.front()), 5, 0);
+    bytes_send = send(scli_friend->scli_socketFD, &(block.front()), 5, 0);
 
     block.clear();
 
     block = client->scli_nickname + message;
 
-    bytes_send = send(sd_friend, &(block.front()), block.size(), 0);
+    bytes_send = send(scli_friend->scli_socketFD, &(block.front()), block.size(), 0);
 
     cout << client->scli_nickname << " 📨 " << nickname_friend << endl;
 
+    return scli_friend;
+}
+
+Tictactoe *Server::make_game(SClients *player_1, SClients *player_2)
+{
+    srand(time(NULL));
+    int bytes_received{0}, size_friend_nick;
+    char client_buffer[STR_LENGTH];
+
+    bytes_received = recv(player_1->scli_socketFD, client_buffer, 1, 0);
+    client_buffer[bytes_received] = '\0';
+
+    string size_board_str(client_buffer, 0, 1);
+
+    int size_board = atoi(&size_board_str.front());
+
+    Tictactoe *game = new Tictactoe(player_1, player_2, size_board);
+
+    player_1->scli_board = game;
+    player_2->scli_board = game;
+
+    player_1->scli_available = false;
+    player_2->scli_available = false;
+
+    s_games.push_back(game);
+
+    int player = rand() % 2;
+
+    send_Notification("\t✅ Successful regist with turn " +
+                          std::to_string((player == 0 ? 1 : 2)) +
+                          " " +
+                          game->player_avatars[player],
+                      player_1->scli_socketFD);
+
+    string block_config = std::to_string(player) + size_board_str;
+
+    send_Game_Settings(block_config, player_1);
+
+    player = (player + 1) % 2;
+
+    send_Notification("\t✅ Successful registration with turn " +
+                          std::to_string((player == 0 ? 1 : 2)) +
+                          " " +
+                          game->player_avatars[player],
+                      player_2->scli_socketFD);
+
+    block_config = std::to_string(player) + size_board_str;
+
+    send_Game_Settings(block_config, player_2);
+
+    return game;
+}
+
+bool Server::update_Local_Games(SClients *client)
+{
+    int bytes_received{0}, bytes_send{0}, last_turn = client->scli_board->current_turn;
+    char client_buffer[STR_LENGTH];
+
+    bytes_received = recv(client->scli_socketFD, client_buffer, 2, 0);
+    client_buffer[bytes_received] = '\0';
+    string move(client_buffer, 0, 2);
+
+    if (!client->scli_board->mark_Board(move, client->scli_board->current_turn))
+    {
+        bytes_send = send(client->scli_socketFD, "H", 1, 0);
+        return 0;
+    }
+
+    send_Game_Tick(client->scli_board, move);
+
+    int total_boxes = client->scli_board->get_Size_Board() * client->scli_board->get_Size_Board();
+
+    if (client->scli_board->free_boxes == total_boxes || client->scli_board->check_Win(last_turn))
+        send_Game_Winner(client->scli_board, last_turn);
+    
     return 1;
 }
 

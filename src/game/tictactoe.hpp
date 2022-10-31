@@ -1,33 +1,35 @@
 #ifndef _TIC_TAC_TOE_HPP_
     #define _TIC_TAC_TOE_HPP_
 
-    #include "../include/config.h"
+    #include "../include/sclient.h"
 
-    #define SIZE_BOARD 3
-
+    struct SClients;
     class Tictactoe
     {
         public:
             
             /* Variables */
-            pair<int, int>              players_sd;
+            SClients*             players[2] = { nullptr };
             
             string  player_avatars[2] = {"🇽", "⭕"};
             int     free_boxes = 0, board_owner, current_turn = 0;
 
             Tictactoe   ();
             Tictactoe   (int board_owner, int size_board);
-            Tictactoe   (int sd_player_1, int sd_player_2, int size_board);
+            Tictactoe   (SClients* player_1, SClients* player_2, int size_board);
            ~Tictactoe   ();
-
-            /* Setters */
-            void set_Size_Board (int size_board);
-            void set_Board      ();
 
             /* Core */
             void draw_Board     (string nickname, int player, bool notification = false);
             bool mark_Board     (string move, int player);
             bool check_Win      (int player_avatar);
+
+            /* Setters */
+            void set_Size_Board (int size_board);
+            void set_Board      ();
+
+            /* Getters */
+            uint get_Size_Board ();
 
             /* Utils */
             string complete_digitss(int t, bool type);

@@ -47,7 +47,7 @@ Client::~Client()
 
 }
 
-void Client::get_Game_Owner_CurrTurn(OWNER_TURN data_Game)
+void Client::get_Game_Owner_CurrTurn(OWNER_TURN& data_Game)
 {
     data_Game.first     = game->board_owner;
     data_Game.second    = game->current_turn;
@@ -275,15 +275,13 @@ bool Client::send_File(std::string nickname_friend, std::string file_name)
  * 
  * @return A boolean to know if the inivitation has been sent
 */ 
-bool Client::send_Invitation(std::string nickname_friend, uint size_board)
+bool Client::send_Invitation(uint size_board)
 {
     int bytes_send{0};
 
-    string sizeboard_str = std::to_string(size_board),
-           block = complete_digits(nickname_friend.size(), 1) + sizeboard_str;
+    string sizeboard_str = std::to_string(size_board);
 
-    bytes_send = send(cli_socketFD, &(block.front()), 3, 0);
-    bytes_send = send(cli_socketFD, &(nickname_friend.front()), nickname_friend.size(), 0);
+    bytes_send = send(cli_socketFD, &(sizeboard_str.front()), 1, 0);
 
     return 1;
 }
@@ -551,6 +549,8 @@ bool Client::recv_Server_Game_Settings()
     char player = bufferRead[0];
             
     size_board = atoi(&bufferRead[1]);
+
+    cout << "CLIENT " << atoi(&player) << " " << size_board << "\n";
 
     game = new Tictactoe(atoi(&player), size_board);
 

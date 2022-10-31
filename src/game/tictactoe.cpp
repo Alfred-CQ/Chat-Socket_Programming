@@ -14,10 +14,10 @@ Tictactoe::Tictactoe(int board_owner, int size_board)
     set_Board();
 }
 
-Tictactoe::Tictactoe(int sd_player_1, int sd_player_2, int size_board)
+Tictactoe::Tictactoe(SClients* player_1, SClients* player_2, int size_board)
 {
-    players_sd.first = sd_player_1;
-    players_sd.second = sd_player_2;
+    players[0] = player_1;
+    players[1] = player_2;
 
     set_Size_Board(size_board);
 
@@ -52,6 +52,11 @@ void Tictactoe::set_Board()
             boxes_map.emplace(complete_digitss(k, 1), std::make_pair(i, j));
         }
     }
+}
+
+uint Tictactoe::get_Size_Board()
+{
+    return size_board;
 }
 
 /* Core */

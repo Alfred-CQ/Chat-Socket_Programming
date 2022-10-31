@@ -38,7 +38,6 @@ void readMessage(Client* client)
 
 int main(int argc, char *argv[])
 {
-    
     Client myclient(45000, "127.0.0.1");
 
     string nickname, nick_friend, message, file_name, response_invitation, selected_box;
@@ -56,8 +55,7 @@ int main(int argc, char *argv[])
     
     sleep(1.5);
     cout << "***** " << nickname << " choose one of the following options *****\n";
-    cout << "      [M] Send a message - [B] Broadcast\n";
-    cout << "      [L] List of users  - [R] Close session\n";
+    cout << "      [M] Send a message - [B] Broadcast\n      [L] List of users  - [R] Close session\n";
     cout << "      [F] Send a file\n";
     cout << "      [I] Invite game    - [G] Accept game  - [E] Enter game\n";
 
@@ -113,7 +111,7 @@ int main(int argc, char *argv[])
                 int sizeboard;
                 cout << "Size of Board (1-9): ";        cin >> sizeboard;
 
-                myclient.send_Invitation(nick_friend, sizeboard);
+                myclient.send_Invitation(sizeboard);
             }
         }
         else if (option_send == 'E')
@@ -128,6 +126,8 @@ int main(int argc, char *argv[])
 
                 if (data_Game.first == data_Game.second)
                 {
+                    sleep(1.5);
+                    
                     if (stop_game == true) break;
 
                     cout << "\n\t       Player [ " << (data_Game.first == 0 ? 1 : 2) << " ] choose a box: ";
