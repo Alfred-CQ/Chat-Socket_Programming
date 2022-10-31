@@ -11,14 +11,14 @@
             vector<SClients*>   s_clients;
             vector<Tictactoe*>  s_games;
 
-            Server(uint port, std::string ip);
+            Server(uint port, std::string ip, uint number_clients = 100);
             ~Server();
 
             /* */
-            SClients*  register_client      ();
+            SClients*  register_client      (int client_FD);
             SClients*  message_clients      (SClients* client);
             Tictactoe* make_game            (SClients* player_1, SClients* player_2);
-            bool       update_Local_Games    (SClients* client);
+            bool       update_Local_Games   (SClients* client);
 
             /* Senders */
             bool send_broadcast             (SClients *client, bool exit = false);

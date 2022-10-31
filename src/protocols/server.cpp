@@ -1,10 +1,13 @@
 #include "../include/server.hpp"
 #include "../include/utils.h"
 
-Server::Server(uint port, std::string ip)
+Server::Server(uint port, std::string ip, uint number_clients)
 {
     server_port = port;
     server_ip = ip;
+
+    s_clients = vector<SClients*>(number_clients, nullptr);
+
     if ((server_SocketFD = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("Socket");
@@ -36,12 +39,11 @@ Server::~Server()
 {
 }
 
-SClients *Server::register_client()
+SClients *Server::register_client(int client_FD)
 {
-    int bytes_received{0}, client_FD = accept(server_SocketFD, (struct sockaddr *)&cli_addr, &client);
+    int bytes_received{0};
     char client_buffer[STR_LENGTH];
-
-    bytes_received = recv(client_FD, client_buffer, 1, 0);
+      
     bytes_received = recv(client_FD, client_buffer, 2, 0);
     client_buffer[bytes_received] = '\0';
 
@@ -52,7 +54,7 @@ SClients *Server::register_client()
 
     SClients *client = new SClients(server_clients, client_FD, string(client_buffer));
 
-    s_clients.push_back(client);
+    s_clients[client_FD] = client;
 
     cout << "New Client Registered [ " << string(client_buffer) << " ] with ClientFD [ " << client_FD << " ]\n";
     cout << "    📤 Sending response\n";
@@ -100,7 +102,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
 
     for (auto i : s_clients)
     {
-        if (i->scli_socketFD != client->scli_socketFD && i->scli_available)
+        if (i && i->scli_socketFD != client->scli_socketFD && i->scli_available)
         {
             bytes_send = send(i->scli_socketFD, "M", 1, 0);
 
@@ -323,7 +325,7 @@ SClients *Server::message_clients(SClients *client)
 
     for (int index_clients = 0; index_clients < s_clients.size(); ++index_clients)
     {
-        if (nickname_friend == s_clients[index_clients]->scli_nickname)
+        if (s_clients[index_clients] && nickname_friend == s_clients[index_clients]->scli_nickname)
         {
             scli_friend = s_clients[index_clients];
             break;

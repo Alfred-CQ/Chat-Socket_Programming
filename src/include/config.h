@@ -2,6 +2,8 @@
     #define _CONFIG_H_
 
     #include <arpa/inet.h>
+    #include <sys/types.h>
+    #include <netinet/in.h>
     #include <string.h>
     #include <unistd.h>
     #include <string.h>
