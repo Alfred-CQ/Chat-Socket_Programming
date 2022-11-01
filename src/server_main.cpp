@@ -48,6 +48,8 @@ int main(void)
     /* Connect */
     socklen_t addrlen;
     struct sockaddr_storage remoteaddr;
+    struct sockaddr_in      client_addr;
+    char remoteIP[INET6_ADDRSTRLEN];
     int newfd; 
 
     for (;;)
@@ -83,8 +85,9 @@ int main(void)
                             fdmax = newfd;
                         }
 
-                        printf("selectserver: new connection on "
-                               "socket %d\n", newfd);
+                        cout << "\n 🌐 New Connection from: " 
+                             << inet_ntop(remoteaddr.ss_family,  &((struct sockaddr_in*)&remoteaddr)->sin_addr, remoteIP, INET6_ADDRSTRLEN) 
+                             << " on socket " << newfd << "\n";
                     }
                 }
                 else
@@ -95,20 +98,16 @@ int main(void)
 
                     if (bytes_received <= 0) {
                         
-                        if (bytes_received == 0) 
-                        {
-                            printf("selectserver: socket %d close connection\n", fd);
-                        } 
-                        else 
-                        {
+                        if (bytes_received == 0)
+                            cout << "\n ⛔ close connection socket" << fd << "\n";
+                        else
                             perror("recv");
-                        }
+                            
                         close(fd);
                         FD_CLR(fd, &main_fds);
                     }
                     else
                     {
-                        cout << myServer.s_clients[fd] << std::endl;
                         if (action == 'N')
                             myServer.register_client(fd);
                         else

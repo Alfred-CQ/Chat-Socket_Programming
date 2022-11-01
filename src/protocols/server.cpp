@@ -102,7 +102,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
 
     for (auto i : s_clients)
     {
-        if (i && i->scli_socketFD != client->scli_socketFD && i->scli_available)
+        if (i && (i->scli_socketFD != client->scli_socketFD && i->scli_available))
         {
             bytes_send = send(i->scli_socketFD, "M", 1, 0);
 
@@ -121,16 +121,17 @@ bool Server::send_broadcast(SClients *client, bool exit)
 
     if (exit)
     {
-        for (auto it = s_clients.begin(); it != s_clients.end(); ++it)
+        for (int clients_idx = 0; clients_idx < s_clients.size(); ++clients_idx)
         {
-            if ((*it)->scli_socketFD == client->scli_socketFD)
+            if (s_clients[clients_idx] && (s_clients[clients_idx]->scli_socketFD == client->scli_socketFD))
             {
-                bytes_send = send((*it)->scli_socketFD, "R", 1, 0);
-                s_clients.erase(it);
+                bytes_send = send(s_clients[clients_idx]->scli_socketFD, "R", 1, 0);
+                delete s_clients[clients_idx];
+                s_clients[clients_idx] = nullptr;
+                --server_clients;
                 break;
             }
         }
-
         cout << "    🏃 Exit Broadcast close 🏃\n";
     }
     else
@@ -138,6 +139,7 @@ bool Server::send_broadcast(SClients *client, bool exit)
         send_Notification("\t🛰  ✅ Broadcast completed", client->scli_socketFD);
         cout << "    🛰 Broadcast close 🛰\n";
     }
+    cout << "[ SERVER ] \n";
 
     return true;
 }
@@ -149,22 +151,28 @@ bool Server::send_list_clients(SClients *client)
 
     bytes_send = send(client->scli_socketFD, "L", 1, 0);
 
-    string block = complete_digits(s_clients.size(), 1);
+    string block = complete_digits(server_clients, 1);
 
     bytes_send = send(client->scli_socketFD, &(block.front()), block.size(), 0);
 
     block.clear();
 
-    for (auto client_p : s_clients)
-        block += complete_digits(client_p->scli_nickname.size(), 1);
-
+    for (SClients* client_p : s_clients)
+    {
+        if (client_p)
+            block += complete_digits(client_p->scli_nickname.size(), 1);
+    }
+        
     bytes_send = send(client->scli_socketFD, &(block.front()), block.size(), 0);
 
     block.clear();
 
     for (auto client_p : s_clients)
-        block += client_p->scli_nickname;
-
+    {
+        if (client_p)
+            block += client_p->scli_nickname;
+    }
+        
     bytes_send = send(client->scli_socketFD, &(block.front()), block.size(), 0);
 
     cout << " 📝 Client list printed" << endl;
@@ -196,7 +204,7 @@ bool Server::send_file(SClients *client)
 
     for (idx_client = 0; idx_client < s_clients.size(); ++idx_client)
     {
-        if (nickname_friend == s_clients[idx_client]->scli_nickname)
+        if (s_clients[idx_client] && (nickname_friend == s_clients[idx_client]->scli_nickname))
         {
             sd_friend = s_clients[idx_client]->scli_socketFD;
             break;
